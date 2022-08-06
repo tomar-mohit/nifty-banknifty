@@ -1,0 +1,56 @@
+{
+    "mainUrls" : [
+    {
+        "site": "new",
+        "baseurl": "https://www.nseindia.com/api/",
+        "urls":[
+            {
+                "name": "marketState",
+                "url": "marketStatus",
+                "responseType": 2,
+                "cols": [
+                    "market",
+                    "marketStatus",
+                    "tradeDate",
+                    "index",
+                    "last",
+                    "variation",
+                    "percentChange",
+                    "marketStatusMessage"
+                ]
+
+            }
+        ]
+    },
+    {
+        "site": "old",
+        "baseurl": "https://www.nseindia.com/api/",
+        "urls":[
+            {
+                "name": "marketState",
+                "url": "marketStatus",
+                "responseType": 2,
+                "cols": [
+                    "market",
+                    "marketStatus",
+                    "tradeDate",
+                    "index",
+                    "last",
+                    "variation",
+                    "percentChange",
+                    "marketStatusMessage"
+                ]
+
+            }
+        ]
+    }
+    ],
+    "messages" : {
+        "GenericStartMessage": "Program to get NSE derivate data and give trades for next session. Run with -h to see all the options or run with specified option to get the result",
+        "usage": "nbn.exe -options -output. Run with --help for detailed usage",
+        "detailedUsage": "nbn.exe -options -output. \n options: [-getNiftyOverview, -getMarketOverview, -optionChain --limit (n) (default all), -nifyDetails, -allIndices, -derivativeTurnover, -liveData, -liveFnOData, -marketTurnover, -topFnO  ]\n output: [-default, -json]"
+    }
+    
+}
+    
+    
