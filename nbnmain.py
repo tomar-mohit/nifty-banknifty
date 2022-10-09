@@ -6,6 +6,7 @@ import re
 import sys
 import os
 from jugaad_data.nse import NSELive
+import nbndetails
 
 
 class NiftyBankNifty:
@@ -13,10 +14,10 @@ class NiftyBankNifty:
 
     __nbn_message = None
     __jsonout_path = None
+    __nbndetails__ = nbndetails.NBNDetails()
 
     indent_setting = 2
     '''indent setting for json output file'''
-
 
     output_format = 'std'
 
@@ -75,7 +76,7 @@ class NiftyBankNifty:
         nifty = next((item for item in state if item['market'] == 'Capital Market'), None)
         self.get_jsonfile_path()
         self.output_data(nifty)
-
+        return nifty
 
     def main_market_data(self):
         """
@@ -85,6 +86,7 @@ class NiftyBankNifty:
         state = nse.market_status()['marketState']
         self.get_jsonfile_path()
         self.output_data(state)
+        return state
 
 
     def opt_chain(self, limit=-1):
@@ -95,13 +97,15 @@ class NiftyBankNifty:
         nse = NSELive()
         state = nse.index_option_chain()
         self.get_jsonfile_path()
+        data = None
         if limit == -1:
             # print(json.dumps(state, indent=indent_setting))
+            data = state
             self.output_data(state)
-        elif (1 <= limit <= 100):
+        elif 1 <= limit <= 100:
             # get the value
             records = state["records"]
-            underlyingValue = records["underlyingValue"]
+            underlying_value = records["underlyingValue"]
             all_expiry = records["expiryDates"]
             latest_expiry = all_expiry[0]
             latest_date = datetime.strptime(latest_expiry, '%d-%b-%Y')
@@ -112,7 +116,7 @@ class NiftyBankNifty:
 
             # find nearest (n - 1) list of expiry
             all_strikeprice = records["strikePrices"]
-            all_nearby_strikes = nsmallest(2*limit, all_strikeprice, key=lambda x: abs(x - underlyingValue))
+            all_nearby_strikes = nsmallest(2*limit, all_strikeprice, key=lambda x: abs(x - underlying_value))
 
             filtered = state["filtered"]["data"]
             nearby_data = [item for item in filtered if item["strikePrice"] in all_nearby_strikes]
@@ -120,8 +124,10 @@ class NiftyBankNifty:
             filtered_month_data = [item for item in all_data if item["strikePrice"] in all_nearby_strikes and item["expiryDate"] == latest_month_expiry]
             filtered_all_data = nearby_data + filtered_month_data
             self.output_data(filtered_all_data)
+            data = filtered_all_data
         else:
             print('invalid value for limit')
+        return data
 
 
     def all_indices(self, index=None):
@@ -132,15 +138,19 @@ class NiftyBankNifty:
         nse = NSELive()
         state = nse.all_indices()
         self.get_jsonfile_path()
+        data = None
         if index != 'Nifty':
             self.output_data(state)
+            data = state
         else:
             data = state["data"]
             nifty = next((item for item in data if item["index"] == "NIFTY 50"), None)
             if nifty is not None:
                 self.output_data(nifty)
+                data = nifty
             else:
                 print('none')
+        return data
 
 
     def derivate_turnover(self):
@@ -151,6 +161,7 @@ class NiftyBankNifty:
         self.get_jsonfile_path()
         state = nse.eq_derivative_turnover()
         self.output_data(state)
+        return state
 
 
     def live_index(self):
@@ -162,6 +173,7 @@ class NiftyBankNifty:
         self.get_jsonfile_path()
         state = nse.live_index()
         self.output_data(state)
+        return state
 
 
     def live_fno(self):
@@ -172,6 +184,7 @@ class NiftyBankNifty:
         state = nse.live_fno()
         self.get_jsonfile_path()
         self.output_data(state)
+        return state
 
 
     def market_turnover(self):
@@ -182,6 +195,43 @@ class NiftyBankNifty:
         state = nse.market_turnover()
         self.get_jsonfile_path()
         self.output_data(state)
+        return state
+
+    def get_ohlc(self):
+        """retuns the OHLC of Nifty
+
+        Returns:
+            object: ohlc value
+        """        
+        # status = self.current_status()
+        # if (status is not None):
+        #     print (1)
+        # Todo: Get from other API
+        # ToDo: Regex escape in JSON from "Dr Reddy's Lab"
+        idx = self.live_index()
+        if idx is not None:
+            # ToDo: check with Data without 0 why next of list expansion is not working
+            nifty = idx['data'][0]
+            # data = idx['data'][0]
+            # if (data is not None):
+            if nifty is not None:
+                # nifty = [n for n in data if data['symbol'][0] == 'NIFTY 50']
+                # nifty = next((item for item in data if data["symbol"] == "NIFTY 50"), None)
+                # if (nifty is not None):
+                # print (nifty)
+                # print (nifty)
+                ohlc = {
+                    'o': nifty['open'],
+                    'h': nifty['dayHigh'],
+                    'l': nifty['dayLow'],
+                    'c': nifty['lastPrice']
+                }
+                self.output_data(ohlc)
+                return ohlc
+            else:
+                return None
+        else:
+            return None
 
 
     def big_main(self):
@@ -215,7 +265,7 @@ class NiftyBankNifty:
         elif first_arg == '-optionChain':
             if (second_arg is None or second_arg == '-json'):
                 self.opt_chain()
-            elif second_arg.startswith("--limit="): # and re.match("--limit=\d+") is not None):
+            elif second_arg.startswith("--limit="):  # and re.match("--limit=\d+") is not None):
                 match = re.match("--limit=(\d+)", second_arg)
                 if (match is not None and match.groups() is not None):
                     limit = match.groups()[0]
@@ -239,6 +289,10 @@ class NiftyBankNifty:
             if (len(local_args) >= 3 and local_args[2] == '-json'):
                 self.output_format = 'json'
             self.opt_chain(5)
+        elif first_arg == '-supportAndResistence':
+            if (len(local_args) >= 3 and local_args[2] == '-json'):
+                self.output_format = 'json'
+            self.get_pivot()
         else:
             print('invalid option')
 
@@ -255,7 +309,6 @@ class NiftyBankNifty:
         self.__jsonout_path = path
         return path
 
-
     def output_data(self, message):
         """
         If the output_format is 'std', print the message. If the output_format is 'json', create a
@@ -267,7 +320,7 @@ class NiftyBankNifty:
         elif self.output_format == 'json':
             pathlib.Path(os.path.dirname(self.__jsonout_path)).mkdir(parents=True, exist_ok=True)
             with open(self.__jsonout_path, "w", encoding='utf8') as file1:
-            # Writing data to a file
+                # Writing data to a file
                 file1.write(json.dumps(message, indent=self.indent_setting))
 
     def __get_data_file_path__(self, relative_path):
@@ -280,6 +333,13 @@ class NiftyBankNifty:
 
         return os.path.join(base_path, relative_path)
 
+    def get_pivot(self):
+        """Returns the pivot point
 
-nbn = NiftyBankNifty()
-nbn.big_main()
+        Returns:
+            object: pivots
+        """        
+        ohlc = self.get_ohlc()
+        pivots = self.__nbndetails__.get_pivot(ohlc)
+        self.output_data(pivots)
+        return pivots

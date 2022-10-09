@@ -48,7 +48,7 @@
     "messages" : {
         "GenericStartMessage": "Program to get NSE derivate data and give trades for next session. Run with -h to see all the options or run with specified option to get the result",
         "usage": "nbn.exe -options -output. Run with --help for detailed usage",
-        "detailedUsage": "nbn.exe -options -output. \n options: [-getNiftyOverview, -getMarketOverview, -optionChain --limit (n) (default all), -nifyDetails, -allIndices, -derivativeTurnover, -liveData, -liveFnOData, -marketTurnover, -topFnO  ]\n output: [-default, -json]"
+        "detailedUsage": "nbn.exe -options -output. \n options: [-getNiftyOverview, -getMarketOverview, -optionChain --limit (n) (default all), -nifyDetails, -allIndices, -derivativeTurnover, -liveData, -liveFnOData, -marketTurnover, -topFnO, -supportAndResistence  ]\n output: [-default, -json]"
     }
     
 }
