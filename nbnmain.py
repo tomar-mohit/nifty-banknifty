@@ -89,7 +89,7 @@ class NiftyBankNifty:
         return state
 
 
-    def opt_chain(self, limit=-1):
+    def opt_chain(self, limit=-1, for_expiry = None):
         """
         It takes the data from the NSE website, filters it and outputs the data in a JSON format
         :param limit: The number of strike prices to be displayed
@@ -108,6 +108,12 @@ class NiftyBankNifty:
             underlying_value = records["underlyingValue"]
             all_expiry = records["expiryDates"]
             latest_expiry = all_expiry[0]
+            # if today is the expiry, there are two scenario, one is called at morning, where delta would be valid, other is at evening when delta is invalid
+            if datetime.now().strftime('%d-%b-%Y') == latest_expiry:
+                # if datetime.strptime(latest_expiry + " 15-31","%d-%b-%Y %H-%M") > datetime.now():
+                latest_expiry = all_expiry[1]
+
+
             latest_date = datetime.strptime(latest_expiry, '%d-%b-%Y')
             latest_month_expiry = latest_expiry
             month_expiry = [x for x in all_expiry if (datetime.strptime(x, '%d-%b-%Y').year == latest_date.year and datetime.strptime(x, '%d-%b-%Y').month == latest_date.month and datetime.strptime(x, '%d-%b-%Y').date != latest_date.date)]
@@ -117,14 +123,20 @@ class NiftyBankNifty:
             # find nearest (n - 1) list of expiry
             all_strikeprice = records["strikePrices"]
             all_nearby_strikes = nsmallest(2*limit, all_strikeprice, key=lambda x: abs(x - underlying_value))
-
-            filtered = state["filtered"]["data"]
-            nearby_data = [item for item in filtered if item["strikePrice"] in all_nearby_strikes]
             all_data = records["data"]
-            filtered_month_data = [item for item in all_data if item["strikePrice"] in all_nearby_strikes and item["expiryDate"] == latest_month_expiry]
-            filtered_all_data = nearby_data + filtered_month_data
-            self.output_data(filtered_all_data)
-            data = filtered_all_data
+
+            if for_expiry is None:
+                filtered = state["filtered"]["data"]
+                nearby_data = [item for item in filtered if item["strikePrice"] in all_nearby_strikes]
+                filtered_month_data = [item for item in all_data if item["strikePrice"] in all_nearby_strikes and item["expiryDate"] == latest_month_expiry]
+                filtered_all_data = nearby_data + filtered_month_data
+                self.output_data(filtered_all_data)
+                data = filtered_all_data
+            else:
+                filtered_date_data = [item for item in all_data if item["strikePrice"] in all_nearby_strikes and item["expiryDate"] == for_expiry]
+                self.output_data(filtered_date_data)
+                data = filtered_date_data
+
         else:
             print('invalid value for limit')
         return data
@@ -343,3 +355,11 @@ class NiftyBankNifty:
         pivots = self.__nbndetails__.get_pivot(ohlc)
         self.output_data(pivots)
         return pivots
+
+    def get_all_expiry(self):
+        nse = NSELive()
+        state = nse.index_option_chain()
+        records = state["records"]
+        all_expiry = records["expiryDates"]
+        self.output_data(all_expiry)
+        return all_expiry
